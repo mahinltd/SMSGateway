@@ -1,0 +1,79 @@
+// ©2026 SMS GATEWAY Mahin Ltd develop by (Tanvir)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum PlanType {
+  free
+  pro
+  enterprise
+}
+
+enum DeviceStatus {
+  online
+  offline
+}
+
+enum MessageType {
+  sent
+  received
+}
+
+enum MessageStatus {
+  pending
+  delivered
+  failed
+}
+
+model User {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String    @unique
+  password  String
+  planType  PlanType  @default(free) @map("plan_type")
+  createdAt DateTime  @default(now()) @map("created_at")
+  devices   Device[]
+  messages  Message[]
+
+  @@map("users")
+}
+
+model Device {
+  id              String       @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String       @map("user_id") @db.ObjectId
+  deviceName      String       @map("device_name")
+  connectionToken String       @unique @map("connection_token")
+  socketId        String?      @map("socket_id")
+  status          DeviceStatus @default(offline)
+  selectedSim     Int          @default(1) @map("selected_sim")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([userId])
+  @@map("devices")
+}
+
+model Message {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String        @map("user_id") @db.ObjectId
+  deviceId    String        @map("device_id") @db.ObjectId
+  phoneNumber String        @map("phone_number")
+  messageBody String        @map("message_body")
+  type        MessageType
+  status      MessageStatus @default(pending)
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([deviceId])
+  @@map("messages")
+}
