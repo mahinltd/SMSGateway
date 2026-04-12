@@ -1,4 +1,4 @@
-// ©2026 Application or Website Name Mahin Ltd develop by (Tanvir)
+// ©2026 SMS GATEWAY Mahin Ltd develop by (Tanvir)
 const prisma = require('../config/prisma');
 
 function isMongoObjectId(value) {
@@ -34,6 +34,32 @@ async function createUniqueConnectionToken() {
   throw new Error('Failed to generate unique connection token');
 }
 
+async function ensurePairingTokenIndexes() {
+  await prisma.$runCommandRaw({
+    createIndexes: 'PairingTokens',
+    indexes: [
+      {
+        key: { token: 1 },
+        name: 'token_unique',
+        unique: true,
+      },
+      {
+        key: { expiresAt: 1 },
+        name: 'expiresAt_ttl',
+        expireAfterSeconds: 0,
+      },
+    ],
+  });
+}
+
+async function savePairingToken(document) {
+  await prisma.$runCommandRaw({
+    insert: 'PairingTokens',
+    documents: [document],
+    ordered: true,
+  });
+}
+
 async function generateToken(req, res) {
   try {
     const payload = req.body && typeof req.body === 'object' ? req.body : {};
@@ -63,46 +89,45 @@ async function generateToken(req, res) {
       return res.status(401).json({ message: 'Unauthorized: user no longer exists' });
     }
 
-    let device = null;
+    const createdAt = new Date();
+    const expiresAt = new Date(createdAt.getTime() + 10 * 60 * 1000);
+    let connectionToken = null;
+
+    await ensurePairingTokenIndexes();
+
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      const connectionToken = await createUniqueConnectionToken();
+      connectionToken = await createUniqueConnectionToken();
 
       try {
-        device = await prisma.device.create({
-          data: {
-            userId,
-            deviceName: resolvedDeviceName,
-            connectionToken,
-            status: 'offline',
-            selectedSim: resolvedSelectedSim ? Number(resolvedSelectedSim) : 1,
-          },
-          select: {
-            id: true,
-            userId: true,
-            deviceName: true,
-            connectionToken: true,
-            status: true,
-            selectedSim: true,
-            createdAt: true,
-          },
+        await savePairingToken({
+          token: connectionToken,
+          userId,
+          deviceName: resolvedDeviceName,
+          selectedSim: resolvedSelectedSim ? Number(resolvedSelectedSim) : 1,
+          createdAt,
+          expiresAt,
         });
         break;
-      } catch (createError) {
-        if (createError && createError.code === 'P2002' && attempt < 2) {
+      } catch (saveError) {
+        const duplicateToken =
+          (saveError && saveError.code === 'P2002') ||
+          (saveError && typeof saveError.message === 'string' && saveError.message.includes('E11000'));
+
+        if (duplicateToken && attempt < 2) {
           continue;
         }
-        throw createError;
+        throw saveError;
       }
     }
 
-    if (!device) {
+    if (!connectionToken) {
       return res.status(500).json({ message: 'Failed to generate device token' });
     }
 
     return res.status(201).json({
       message: 'Device token generated successfully',
-      device,
-      connection_token: device.connectionToken,
+      connection_token: connectionToken,
+      expires_at: expiresAt,
     });
   } catch (error) {
     if (error && error.code === 'P2002') {

@@ -1,4 +1,4 @@
-// ©2026 Application or Website Name Mahin Ltd develop by (Tanvir)
+// ©2026 SMS GATEWAY Mahin Ltd develop by (Tanvir)
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/prisma');
 
@@ -29,13 +29,82 @@ async function pairDeviceSocket(socket, connectionToken, io) {
     return;
   }
 
-  const device = await prisma.device.findUnique({
-    where: { connectionToken: connectionToken.trim() },
+  const normalizedToken = connectionToken.trim();
+  let device = await prisma.device.findUnique({
+    where: { connectionToken: normalizedToken },
     select: {
       id: true,
       userId: true,
     },
   });
+
+  if (!device) {
+    const pendingTokenResult = await prisma.$runCommandRaw({
+      find: 'PairingTokens',
+      filter: { token: normalizedToken },
+      limit: 1,
+    });
+
+    const pendingToken =
+      pendingTokenResult &&
+      pendingTokenResult.cursor &&
+      Array.isArray(pendingTokenResult.cursor.firstBatch) &&
+      pendingTokenResult.cursor.firstBatch.length > 0
+        ? pendingTokenResult.cursor.firstBatch[0]
+        : null;
+
+    if (!pendingToken) {
+      socket.emit('device:paired', { success: false, message: 'Invalid connection_token' });
+      return;
+    }
+
+    if (!pendingToken.userId || !pendingToken.deviceName) {
+      socket.emit('device:paired', { success: false, message: 'Invalid pairing token payload' });
+      return;
+    }
+
+    if (pendingToken.expiresAt && new Date(pendingToken.expiresAt).getTime() < Date.now()) {
+      await prisma.$runCommandRaw({
+        delete: 'PairingTokens',
+        deletes: [{ q: { token: normalizedToken }, limit: 1 }],
+      });
+      socket.emit('device:paired', { success: false, message: 'Pairing token expired' });
+      return;
+    }
+
+    try {
+      device = await prisma.device.create({
+        data: {
+          userId: pendingToken.userId,
+          deviceName: pendingToken.deviceName,
+          connectionToken: normalizedToken,
+          selectedSim: [1, 2].includes(Number(pendingToken.selectedSim)) ? Number(pendingToken.selectedSim) : 1,
+          status: 'offline',
+        },
+        select: {
+          id: true,
+          userId: true,
+        },
+      });
+    } catch (createError) {
+      if (createError && createError.code === 'P2002') {
+        device = await prisma.device.findUnique({
+          where: { connectionToken: normalizedToken },
+          select: {
+            id: true,
+            userId: true,
+          },
+        });
+      } else {
+        throw createError;
+      }
+    }
+
+    await prisma.$runCommandRaw({
+      delete: 'PairingTokens',
+      deletes: [{ q: { token: normalizedToken }, limit: 1 }],
+    });
+  }
 
   if (!device) {
     socket.emit('device:paired', { success: false, message: 'Invalid connection_token' });
