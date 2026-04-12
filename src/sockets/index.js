@@ -23,18 +23,24 @@ function getUserIdFromJwt(socket) {
   }
 }
 
-async function pairDeviceSocket(socket, connectionToken, io) {
+async function pairDeviceSocket(socket, connectionToken, io, pairingContext = {}) {
   if (!connectionToken) {
     socket.emit('device:paired', { success: false, message: 'Missing connection_token' });
     return;
   }
 
   const normalizedToken = connectionToken.trim();
+  const payloadDeviceName =
+    (pairingContext.device_name || pairingContext.deviceName || pairingContext.device_model || pairingContext.deviceModel || '')
+      .toString()
+      .trim();
+  let pendingToken = null;
   let device = await prisma.device.findUnique({
     where: { connectionToken: normalizedToken },
     select: {
       id: true,
       userId: true,
+      deviceName: true,
     },
   });
 
@@ -45,7 +51,7 @@ async function pairDeviceSocket(socket, connectionToken, io) {
       limit: 1,
     });
 
-    const pendingToken =
+    pendingToken =
       pendingTokenResult &&
       pendingTokenResult.cursor &&
       Array.isArray(pendingTokenResult.cursor.firstBatch) &&
@@ -84,6 +90,7 @@ async function pairDeviceSocket(socket, connectionToken, io) {
         select: {
           id: true,
           userId: true,
+          deviceName: true,
         },
       });
     } catch (createError) {
@@ -93,6 +100,7 @@ async function pairDeviceSocket(socket, connectionToken, io) {
           select: {
             id: true,
             userId: true,
+            deviceName: true,
           },
         });
       } else {
@@ -111,6 +119,12 @@ async function pairDeviceSocket(socket, connectionToken, io) {
     return;
   }
 
+  const finalDeviceName =
+    payloadDeviceName ||
+    (device.deviceName && device.deviceName !== 'Pending Connection' ? device.deviceName : null) ||
+    (pendingToken && pendingToken.deviceName ? pendingToken.deviceName : null) ||
+    'Pending Connection';
+
   const roomName = `room_user_${device.userId}`;
   socket.data.userId = device.userId;
   socket.data.deviceId = device.id;
@@ -121,6 +135,7 @@ async function pairDeviceSocket(socket, connectionToken, io) {
     data: {
       socketId: socket.id,
       status: 'online',
+      deviceName: finalDeviceName,
     },
   });
 
@@ -153,9 +168,15 @@ function registerSocketHandlers(io) {
       socket.handshake.auth && socket.handshake.auth.connection_token
         ? socket.handshake.auth.connection_token
         : null;
+    const handshakePairingContext = {
+      device_name: socket.handshake.auth && socket.handshake.auth.device_name ? socket.handshake.auth.device_name : null,
+      deviceName: socket.handshake.auth && socket.handshake.auth.deviceName ? socket.handshake.auth.deviceName : null,
+      device_model: socket.handshake.auth && socket.handshake.auth.device_model ? socket.handshake.auth.device_model : null,
+      deviceModel: socket.handshake.auth && socket.handshake.auth.deviceModel ? socket.handshake.auth.deviceModel : null,
+    };
 
     if (handshakeConnectionToken) {
-      pairDeviceSocket(socket, handshakeConnectionToken, io).catch(() => {
+      pairDeviceSocket(socket, handshakeConnectionToken, io, handshakePairingContext).catch(() => {
         socket.emit('device:paired', { success: false, message: 'Device pairing failed' });
         socket.disconnect(true);
       });
@@ -163,7 +184,7 @@ function registerSocketHandlers(io) {
 
     socket.on('device:pair', async (payload = {}) => {
       try {
-        await pairDeviceSocket(socket, payload.connection_token, io);
+        await pairDeviceSocket(socket, payload.connection_token, io, payload);
       } catch (error) {
         socket.emit('device:paired', { success: false, message: 'Device pairing failed' });
       }

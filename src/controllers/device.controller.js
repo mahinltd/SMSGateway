@@ -72,10 +72,6 @@ async function generateToken(req, res) {
       return res.status(401).json({ message: 'Unauthorized: invalid user context' });
     }
 
-    if (!resolvedDeviceName) {
-      return res.status(400).json({ message: 'device_name is required' });
-    }
-
     if (resolvedSelectedSim && ![1, 2].includes(Number(resolvedSelectedSim))) {
       return res.status(400).json({ message: 'selected_sim must be 1 or 2' });
     }
@@ -102,7 +98,7 @@ async function generateToken(req, res) {
         await savePairingToken({
           token: connectionToken,
           userId,
-          deviceName: resolvedDeviceName,
+          deviceName: resolvedDeviceName || 'Pending Connection',
           selectedSim: resolvedSelectedSim ? Number(resolvedSelectedSim) : 1,
           createdAt,
           expiresAt,
