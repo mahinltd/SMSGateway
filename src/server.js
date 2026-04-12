@@ -12,7 +12,11 @@ const { registerSocketHandlers } = require('./sockets');
 dotenv.config();
 
 const frontendUrl = process.env.FRONTEND_URL || 'https://sms.mahinai.app';
-const allowedOrigins = [frontendUrl, 'http://localhost:5173'];
+const allowedOrigins = [
+  frontendUrl,
+  'http://localhost:5173',
+  'https://sms-gateway-seven.vercel.app',
+];
 
 if (process.env.CORS_ORIGIN) {
   allowedOrigins.push(...process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean));
