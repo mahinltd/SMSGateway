@@ -1,3 +1,4 @@
+// ©2026 SMS GATEWAY Mahin Ltd develop by (Tanvir)
 # Logs
 logs
 *.log
@@ -22,3 +23,18 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Runtime and test output
+coverage
+.nyc_output
+.eslintcache
+
+# Temporary files
+tmp
+temp
+*.tmp
