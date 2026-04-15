@@ -14,6 +14,11 @@ enum PlanType {
   enterprise
 }
 
+enum UserRole {
+  user
+  admin
+}
+
 enum DeviceStatus {
   online
   offline
@@ -30,15 +35,31 @@ enum MessageStatus {
   failed
 }
 
+enum PaymentMethod {
+  bkash
+  nagad
+  rocket
+}
+
+enum PaymentStatus {
+  pending
+  approved
+  rejected
+}
+
 model User {
   id        String    @id @default(auto()) @map("_id") @db.ObjectId
   name      String
   email     String    @unique
   password  String
   planType  PlanType  @default(free) @map("plan_type")
+  role      UserRole  @default(user)
+  isPaid    Boolean   @default(false) @map("is_paid")
+  isBanned  Boolean   @default(false) @map("is_banned")
   createdAt DateTime  @default(now()) @map("created_at")
   devices   Device[]
   messages  Message[]
+  payments  Payment[]
 
   @@map("users")
 }
@@ -76,4 +97,35 @@ model Message {
   @@index([userId])
   @@index([deviceId])
   @@map("messages")
+}
+
+model Payment {
+  id            String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String        @map("user_id") @db.ObjectId
+  senderNumber  String        @map("sender_number")
+  trxId         String        @unique @map("trx_id")
+  paymentMethod PaymentMethod @map("payment_method")
+  amount        Float
+  status        PaymentStatus @default(pending)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("payments")
+}
+
+model Settings {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  singletonKey String   @unique @default("SYSTEM") @map("singleton_key")
+  bkashNumber  String?  @map("bkash_number")
+  nagadNumber  String?  @map("nagad_number")
+  rocketNumber String?  @map("rocket_number")
+  appPrice     Float?   @map("app_price")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
 }
