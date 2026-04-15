@@ -1,4 +1,4 @@
-// ©2026 SMS GATEWAY Name Mahin Ltd develop by (Tanvir)
+// ©2026 SMS GATEWAY Mahin Ltd develop by (Tanvir)
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/prisma');
@@ -62,6 +62,7 @@ async function loginUser(req, res) {
         email: true,
         password: true,
         planType: true,
+        role: true,
       },
     });
 
@@ -75,7 +76,7 @@ async function loginUser(req, res) {
     }
 
     const token = jwt.sign(
-      { user_id: user.id, email: user.email, plan_type: user.planType },
+      { user_id: user.id, email: user.email, plan_type: user.planType, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
@@ -88,6 +89,7 @@ async function loginUser(req, res) {
         name: user.name,
         email: user.email,
         planType: user.planType,
+        role: user.role,
       },
     });
   } catch (error) {
