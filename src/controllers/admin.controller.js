@@ -150,8 +150,17 @@ async function getPayments(_req, res) {
   try {
     const payments = await prisma.payment.findMany({
       orderBy: { createdAt: 'desc' },
-      include: {
-        user: {
+    });
+
+    const userIds = [...new Set(payments.map((payment) => payment.userId).filter(Boolean))];
+
+    const users = userIds.length
+      ? await prisma.user.findMany({
+          where: {
+            id: {
+              in: userIds,
+            },
+          },
           select: {
             id: true,
             name: true,
@@ -160,9 +169,13 @@ async function getPayments(_req, res) {
             isPaid: true,
             isBanned: true,
           },
-        },
-      },
-    });
+        })
+      : [];
+
+    const userMap = users.reduce((accumulator, user) => {
+      accumulator[user.id] = user;
+      return accumulator;
+    }, {});
 
     const normalizedPayments = payments.map((payment) => ({
       id: payment.id,
@@ -174,16 +187,10 @@ async function getPayments(_req, res) {
       status: payment.status,
       createdAt: payment.createdAt,
       updatedAt: payment.updatedAt,
-      user: payment.user
-        ? {
-            id: payment.user.id,
-            name: payment.user.name,
-            email: payment.user.email,
-            role: payment.user.role,
-            isPaid: payment.user.isPaid,
-            isBanned: payment.user.isBanned,
-          }
-        : null,
+      user: userMap[payment.userId] || {
+        name: 'Deleted User',
+        email: 'N/A',
+      },
     }));
 
     return res.status(200).json({ data: normalizedPayments });
