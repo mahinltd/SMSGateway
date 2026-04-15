@@ -103,7 +103,16 @@ async function getSettings(_req, res) {
 
 async function upsertSettings(req, res) {
   try {
-    const { bkashNumber, nagadNumber, rocketNumber, appPrice } = req.body;
+    const payload = req.body && typeof req.body === 'object' ? req.body : {};
+    const bkashNumber =
+      payload.bkashNumber !== undefined
+        ? payload.bkashNumber
+        : payload.bKashNumber !== undefined
+          ? payload.bKashNumber
+          : payload.bkash_number;
+    const nagadNumber = payload.nagadNumber !== undefined ? payload.nagadNumber : payload.nagad_number;
+    const rocketNumber = payload.rocketNumber !== undefined ? payload.rocketNumber : payload.rocket_number;
+    const appPrice = payload.appPrice !== undefined ? payload.appPrice : payload.app_price;
     const updateData = {};
 
     if (bkashNumber !== undefined) {
