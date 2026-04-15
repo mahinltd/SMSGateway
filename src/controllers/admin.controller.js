@@ -164,8 +164,9 @@ async function getPayments(_req, res) {
       },
     });
 
-    return res.status(200).json({ payments });
+    return res.status(200).json({ data: payments });
   } catch (error) {
+    console.log(error);
     return res.status(500).json({ message: 'Failed to fetch payments' });
   }
 }
