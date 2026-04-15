@@ -2,6 +2,45 @@
 const prisma = require('../config/prisma');
 const { sendPaymentNotification } = require('../services/emailService');
 
+async function getPaymentStatus(req, res) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        isPaid: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const payments = await prisma.payment.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        senderNumber: true,
+        trxId: true,
+        paymentMethod: true,
+        amount: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return res.status(200).json({
+      isPaid: user.isPaid,
+      payments,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to fetch payment status' });
+  }
+}
+
 async function submitPayment(req, res) {
   try {
     const payload = req.body && typeof req.body === 'object' ? req.body : {};
@@ -100,5 +139,6 @@ async function submitPayment(req, res) {
 }
 
 module.exports = {
+  getPaymentStatus,
   submitPayment,
 };
