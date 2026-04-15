@@ -4,22 +4,31 @@ const { sendPaymentNotification } = require('../services/emailService');
 
 async function submitPayment(req, res) {
   try {
-    const { senderNumber, trxId, paymentMethod, amount } = req.body;
+    const payload = req.body && typeof req.body === 'object' ? req.body : {};
+    const senderNumber = payload.senderPhone || payload.phoneNumber || payload.senderNumber;
+    const trxId = payload.trxId || payload.transactionId;
+    const paymentMethodRaw = payload.paymentMethod || payload.method;
 
-    if (!senderNumber || !trxId || !paymentMethod || amount === undefined || amount === null) {
+    if (!senderNumber || !trxId || !paymentMethodRaw) {
       return res.status(400).json({
-        message: 'senderNumber, trxId, paymentMethod, and amount are required',
+        message: 'sender number, trxId/transactionId, and payment method are required',
       });
     }
 
-    const normalizedPaymentMethod = String(paymentMethod).toLowerCase();
+    const normalizedPaymentMethod = String(paymentMethodRaw).toLowerCase();
     if (!['bkash', 'nagad', 'rocket'].includes(normalizedPaymentMethod)) {
       return res.status(400).json({ message: "paymentMethod must be 'bkash', 'nagad', or 'rocket'" });
     }
 
-    const numericAmount = Number(amount);
-    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-      return res.status(400).json({ message: 'amount must be a valid positive number' });
+    const settings = await prisma.settings.findUnique({
+      where: { singletonKey: 'SYSTEM' },
+      select: { appPrice: true },
+    });
+
+    const numericAmount = Number(settings && settings.appPrice !== null && settings.appPrice !== undefined ? settings.appPrice : 0);
+
+    if (!Number.isFinite(numericAmount) || numericAmount < 0) {
+      return res.status(500).json({ message: 'Invalid app price configuration in system settings' });
     }
 
     const user = await prisma.user.findUnique({
