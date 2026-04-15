@@ -33,7 +33,7 @@ async function sendPaymentNotification(to, subject, html) {
       };
     }
 
-    const from = process.env.RESEND_FROM_EMAIL || 'SMS Gateway <no-reply@sms.mahinai.app>';
+    const from = process.env.RESEND_FROM_EMAIL || 'SMS Gateway <no-reply@mahinai.app>';
     const result = await client.emails.send({
       from,
       to,
