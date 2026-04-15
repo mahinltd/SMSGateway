@@ -164,9 +164,31 @@ async function getPayments(_req, res) {
       },
     });
 
-    return res.status(200).json({ data: payments });
+    const normalizedPayments = payments.map((payment) => ({
+      id: payment.id,
+      userId: payment.userId,
+      senderNumber: payment.senderNumber,
+      trxId: payment.trxId,
+      paymentMethod: payment.paymentMethod,
+      amount: payment.amount,
+      status: payment.status,
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+      user: payment.user
+        ? {
+            id: payment.user.id,
+            name: payment.user.name,
+            email: payment.user.email,
+            role: payment.user.role,
+            isPaid: payment.user.isPaid,
+            isBanned: payment.user.isBanned,
+          }
+        : null,
+    }));
+
+    return res.status(200).json({ data: normalizedPayments });
   } catch (error) {
-    console.log(error);
+    console.error('PAYMENT_FETCH_ERROR:', error);
     return res.status(500).json({ message: 'Failed to fetch payments' });
   }
 }
