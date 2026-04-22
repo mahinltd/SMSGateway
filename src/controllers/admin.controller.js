@@ -269,6 +269,86 @@ async function updatePaymentStatus(req, res) {
   }
 }
 
+async function sendBroadcastEmail(req, res) {
+  try {
+    const { subject, message, target } = req.body || {};
+
+    const normalizedSubject = typeof subject === 'string' ? subject.trim() : '';
+    const normalizedMessage = typeof message === 'string' ? message.trim() : '';
+
+    if (!normalizedSubject || !normalizedMessage) {
+      return res.status(400).json({ message: 'subject and message are required' });
+    }
+
+    if (!['all', 'paid'].includes(target)) {
+      return res.status(400).json({ message: "target must be either 'all' or 'paid'" });
+    }
+
+    const where = {
+      role: {
+        not: 'admin',
+      },
+      email: {
+        not: '',
+      },
+    };
+
+    if (target === 'paid') {
+      where.isPaid = true;
+    }
+
+    const users = await prisma.user.findMany({
+      where,
+      select: {
+        email: true,
+      },
+    });
+
+    const emails = [...new Set(users.map((user) => user.email).filter(Boolean))];
+
+    if (!emails.length) {
+      return res.status(200).json({
+        message: 'No users found for the selected target',
+        target,
+        recipients: 0,
+        sent: 0,
+        failed: 0,
+      });
+    }
+
+    const batchSize = 50;
+    let sent = 0;
+    let failed = 0;
+
+    for (let index = 0; index < emails.length; index += batchSize) {
+      const batch = emails.slice(index, index + batchSize);
+
+      const batchResult = await Promise.allSettled(
+        batch.map((email) => sendPaymentNotification(email, normalizedSubject, normalizedMessage))
+      );
+
+      batchResult.forEach((result) => {
+        if (result.status === 'fulfilled' && result.value && result.value.success) {
+          sent += 1;
+          return;
+        }
+
+        failed += 1;
+      });
+    }
+
+    return res.status(200).json({
+      message: 'Broadcast email process completed',
+      target,
+      recipients: emails.length,
+      sent,
+      failed,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to send broadcast email' });
+  }
+}
+
 module.exports = {
   getUsers,
   toggleUserBan,
@@ -277,4 +357,5 @@ module.exports = {
   upsertSettings,
   getPayments,
   updatePaymentStatus,
+  sendBroadcastEmail,
 };

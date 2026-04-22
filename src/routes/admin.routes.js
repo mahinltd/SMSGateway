@@ -10,6 +10,7 @@ const {
   upsertSettings,
   getPayments,
   updatePaymentStatus,
+  sendBroadcastEmail,
 } = require('../controllers/admin.controller');
 
 const router = express.Router();
@@ -25,5 +26,6 @@ router.put('/settings', upsertSettings);
 
 router.get('/payments', getPayments);
 router.put('/payments/:id/status', updatePaymentStatus);
+router.post('/broadcast', sendBroadcastEmail);
 
 module.exports = router;
