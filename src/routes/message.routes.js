@@ -10,6 +10,7 @@ router.use(authMiddleware);
 router.get('/', authMiddleware, messageController.getMessages);
 router.post('/send', smsSendRateLimiter, messageController.sendSms);
 router.post('/status', messageController.updateSmsStatus);
+router.put('/:id/status', authMiddleware, messageController.updateMessageStatusById);
 router.post('/receive', messageController.receiveSms);
 router.delete('/:id', authMiddleware, messageController.deleteMessage);
 

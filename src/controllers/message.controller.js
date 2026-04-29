@@ -235,10 +235,67 @@ async function deleteMessage(req, res) {
   }
 }
 
+async function updateMessageStatusById(req, res) {
+  try {
+    const { id } = req.params;
+    const { status } = req.body || {};
+
+    if (!id) {
+      return res.status(400).json({ message: 'Message id is required' });
+    }
+
+    if (!['sent', 'failed'].includes(status)) {
+      return res.status(400).json({ message: "status must be 'sent' or 'failed'" });
+    }
+
+    const existingMessage = await prisma.message.findFirst({
+      where: {
+        id,
+        userId: req.user.id,
+      },
+      select: {
+        id: true,
+        userId: true,
+        deviceId: true,
+      },
+    });
+
+    if (!existingMessage) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+
+    const updatedMessage = await prisma.message.update({
+      where: { id: existingMessage.id },
+      data: { status },
+      select: {
+        id: true,
+        deviceId: true,
+        status: true,
+      },
+    });
+
+    const io = req.app.get('io');
+    const roomName = `room_user_${req.user.id}`;
+    io.to(roomName).emit('messageStatusUpdated', {
+      message_id: updatedMessage.id,
+      device_id: updatedMessage.deviceId,
+      status: updatedMessage.status,
+    });
+
+    return res.status(200).json({
+      message: 'Message status updated',
+      sms: updatedMessage,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to update message status' });
+  }
+}
+
 module.exports = {
   getMessages,
   sendSms,
   updateSmsStatus,
   receiveSms,
   deleteMessage,
+  updateMessageStatusById,
 };
