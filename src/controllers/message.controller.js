@@ -1,6 +1,14 @@
 // ©2026 SMS GATEWAY Mahin Ltd develop by (Tanvir)
 const prisma = require('../config/prisma');
 
+function normalizeMessageStatus(status) {
+  if (status === 'sent') {
+    return 'delivered';
+  }
+
+  return status;
+}
+
 async function getMessages(req, res) {
   try {
     const data = await prisma.message.findMany({
@@ -244,9 +252,11 @@ async function updateMessageStatusById(req, res) {
       return res.status(400).json({ message: 'Message id is required' });
     }
 
-    if (!['sent', 'failed'].includes(status)) {
+    if (!['sent', 'failed', 'delivered'].includes(status)) {
       return res.status(400).json({ message: "status must be 'sent' or 'failed'" });
     }
+
+    const normalizedStatus = normalizeMessageStatus(status);
 
     const existingMessage = await prisma.message.findFirst({
       where: {
@@ -266,11 +276,16 @@ async function updateMessageStatusById(req, res) {
 
     const updatedMessage = await prisma.message.update({
       where: { id: existingMessage.id },
-      data: { status },
+      data: { status: normalizedStatus },
       select: {
         id: true,
         deviceId: true,
+        phoneNumber: true,
+        messageBody: true,
+        type: true,
         status: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
 
@@ -279,7 +294,25 @@ async function updateMessageStatusById(req, res) {
     io.to(roomName).emit('messageStatusUpdated', {
       message_id: updatedMessage.id,
       device_id: updatedMessage.deviceId,
+      phone_number: updatedMessage.phoneNumber,
+      message_body: updatedMessage.messageBody,
+      type: updatedMessage.type,
       status: updatedMessage.status,
+      created_at: updatedMessage.createdAt,
+      updated_at: updatedMessage.updatedAt,
+      message: updatedMessage,
+    });
+
+    io.to(roomName).emit('SMS_STATUS_UPDATED', {
+      message_id: updatedMessage.id,
+      device_id: updatedMessage.deviceId,
+      phone_number: updatedMessage.phoneNumber,
+      message_body: updatedMessage.messageBody,
+      type: updatedMessage.type,
+      status: updatedMessage.status,
+      created_at: updatedMessage.createdAt,
+      updated_at: updatedMessage.updatedAt,
+      message: updatedMessage,
     });
 
     return res.status(200).json({

@@ -12,6 +12,7 @@ const {
   updatePaymentStatus,
   sendBroadcastEmail,
 } = require('../controllers/admin.controller');
+const { sendAdminEmailToUser } = require('../controllers/adminEmail.controller');
 
 const router = express.Router();
 
@@ -27,5 +28,6 @@ router.put('/settings', upsertSettings);
 router.get('/payments', getPayments);
 router.put('/payments/:id/status', updatePaymentStatus);
 router.post('/broadcast', sendBroadcastEmail);
+router.post('/emails/send', sendAdminEmailToUser);
 
 module.exports = router;

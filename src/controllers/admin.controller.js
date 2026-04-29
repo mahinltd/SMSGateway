@@ -181,6 +181,8 @@ async function getPayments(_req, res) {
       id: payment.id,
       userId: payment.userId,
       senderNumber: payment.senderNumber,
+      phoneNumber: payment.senderNumber,
+      phone_number: payment.senderNumber,
       trxId: payment.trxId,
       paymentMethod: payment.paymentMethod,
       amount: payment.amount,
