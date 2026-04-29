@@ -45,6 +45,8 @@ const io = new Server(server, {
     allowedHeaders: ['Authorization', 'Content-Type'],
   },
   transports: ['websocket', 'polling'],
+  allowEIO3: true,
+  allowRequest: (_req, callback) => callback(null, true),
 });
 
 app.set('io', io);
