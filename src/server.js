@@ -39,10 +39,12 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: (_origin, callback) => callback(null, true),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
+    allowedHeaders: ['Authorization', 'Content-Type'],
   },
+  transports: ['websocket', 'polling'],
 });
 
 app.set('io', io);
