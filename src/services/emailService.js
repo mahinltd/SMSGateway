@@ -8,22 +8,19 @@ function getAppName() {
 }
 
 function getWebsiteUrl() {
-  return process.env.WEBSITE_URL || process.env.FRONTEND_URL || 'https://mahinai.app';
+  return 'https://sms.mahinai.app';
 }
 
 function getEmailLinks() {
-  const websiteUrl = getWebsiteUrl().replace(/\/$/, '');
   return {
-    termsUrl: process.env.TERMS_URL || `${websiteUrl}/terms-and-conditions`,
-    privacyUrl: process.env.PRIVACY_POLICY_URL || `${websiteUrl}/privacy-policy`,
-    contactUrl: process.env.CONTACT_US_URL || `${websiteUrl}/contact-us`,
+    termsUrl: 'https://sms.mahinai.app/terms',
+    privacyUrl: 'https://sms.mahinai.app/privacy',
+    contactUrl: 'https://sms.mahinai.app/contact',
   };
 }
 
 function buildProfessionalEmailHtml({ subject, message, recipientName } = {}) {
   const appName = getAppName();
-  const websiteUrl = getWebsiteUrl();
-  const logoUrl = process.env.EMAIL_LOGO_URL || `${websiteUrl.replace(/\/$/, '')}/logo.png`;
   const links = getEmailLinks();
   const safeRecipient = recipientName ? `<p style="margin:0 0 16px;color:#334155;font-size:15px;">Hi ${recipientName},</p>` : '';
 
@@ -35,15 +32,23 @@ function buildProfessionalEmailHtml({ subject, message, recipientName } = {}) {
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(15,23,42,0.08);">
               <tr>
                 <td style="background:linear-gradient(135deg,#0f172a 0%,#1d4ed8 100%);padding:24px 32px;">
-                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                    <tr>
-                      <td style="vertical-align:middle;">
-                        <img src="${logoUrl}" alt="${appName} logo" style="display:block;width:44px;height:44px;border-radius:12px;object-fit:cover;margin-bottom:12px;" />
-                        <div style="font-size:20px;font-weight:700;color:#ffffff;line-height:1.2;">${appName}</div>
-                        <div style="font-size:13px;color:#dbeafe;margin-top:4px;">${subject || 'Important update'}</div>
-                      </td>
-                    </tr>
-                  </table>
+                  <div style="text-align: center; padding: 20px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="80" height="80" style="display: block; margin: 0 auto;">
+                      <defs>
+                        <linearGradient id="bg" x1="0%" y1="100%" x2="100%" y2="0%">
+                          <stop offset="0%" stop-color="#3B82F6" />
+                          <stop offset="100%" stop-color="#22C55E" />
+                        </linearGradient>
+                      </defs>
+                      <rect x="0" y="0" width="108" height="108" rx="24" fill="url(#bg)" />
+                      <path fill="#FFFFFF" d="M34 36h40c3.3 0 6 2.7 6 6v24c0 3.3-2.7 6-6 6H46l-8 8v-8h-4c-3.3 0-6-2.7-6-6V42c0-3.3 2.7-6 6-6z" />
+                      <path fill="#E2E8F0" d="M40 46h28v3H40zM40 54h18v3H40z" />
+                      <circle cx="78" cy="66" r="10" fill="#22C55E" />
+                      <path fill="#FFFFFF" d="M73 66l3 3 5-5 1.4 1.4-6.4 6.4-4.4-4.4z" />
+                    </svg>
+                    <h2 style="color: #ffffff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 10px 0 0;">SMS GATEWAY Mahin Ltd</h2>
+                    <div style="font-size:13px;color:#dbeafe;margin-top:4px;">${subject || 'Important update'}</div>
+                  </div>
                 </td>
               </tr>
               <tr>
