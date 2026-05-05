@@ -7,6 +7,7 @@ const statsRoutes = require('./stats.routes');
 const paymentRoutes = require('./payment.routes');
 const settingsRoutes = require('./settings.routes');
 const adminRoutes = require('./admin.routes');
+const kycRoutes = require('./kyc.routes');
 
 const router = express.Router();
 
@@ -17,5 +18,6 @@ router.use('/stats', statsRoutes);
 router.use('/payment', paymentRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/admin', adminRoutes);
+router.use('/kyc', kycRoutes);
 
 module.exports = router;

@@ -56,6 +56,10 @@ model User {
   role      UserRole  @default(user)
   isPaid    Boolean   @default(false) @map("is_paid")
   isBanned  Boolean   @default(false) @map("is_banned")
+  kycStatus String    @default("unverified") @map("kyc_status")
+  nidFront  String?   @map("nid_front")
+  nidBack   String?   @map("nid_back")
+  selfie    String?
   createdAt DateTime  @default(now()) @map("created_at")
   devices   Device[]
   messages  Message[]
