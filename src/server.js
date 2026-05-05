@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const { Server } = require('socket.io');
 const apiRoutes = require('./routes');
@@ -48,16 +49,25 @@ const io = new Server(server, {
   allowEIO3: true,
   allowRequest: (_req, callback) => callback(null, true),
 });
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 150,
+  message: { error: 'Too many requests from this IP, please try again after 15 minutes' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 app.set('io', io);
 app.set('trust proxy', 1);
-
-app.use(helmet());
 
 app.use(cors(corsOptions));
 
 app.use(bodyParser.json({ limit: '1mb' }));
 app.use(bodyParser.urlencoded({ extended: true }));
+
+app.use(helmet());
+
+app.use('/api', apiLimiter);
 
 app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok', service: 'sms-gateway-backend' });
