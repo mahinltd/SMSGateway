@@ -351,6 +351,90 @@ async function sendBroadcastEmail(req, res) {
   }
 }
 
+async function getPendingKyc(_req, res) {
+  try {
+    const users = await prisma.user.findMany({
+      where: {
+        kycStatus: 'pending',
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        kycStatus: true,
+        nidFront: true,
+        nidBack: true,
+        selfie: true,
+        createdAt: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return res.status(200).json({
+      message: 'Pending KYC submissions fetched successfully',
+      data: users,
+      count: users.length,
+    });
+  } catch (error) {
+    console.error('KYC_FETCH_ERROR:', error);
+    return res.status(500).json({ message: 'Failed to fetch pending KYC submissions' });
+  }
+}
+
+async function updateKycStatus(req, res) {
+  try {
+    const { userId } = req.params;
+    const { status } = req.body;
+
+    if (!isMongoObjectId(userId)) {
+      return res.status(400).json({ message: 'Invalid user id' });
+    }
+
+    if (!['approved', 'rejected', 'unverified'].includes(status)) {
+      return res.status(400).json({
+        message: "status must be one of: 'unverified', 'approved', or 'rejected'",
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        kycStatus: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { kycStatus: status },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        kycStatus: true,
+        nidFront: true,
+        nidBack: true,
+        selfie: true,
+        createdAt: true,
+      },
+    });
+
+    return res.status(200).json({
+      message: 'KYC status updated successfully',
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error('KYC_UPDATE_ERROR:', error);
+    return res.status(500).json({ message: 'Failed to update KYC status' });
+  }
+}
+
 module.exports = {
   getUsers,
   toggleUserBan,
@@ -360,4 +444,6 @@ module.exports = {
   getPayments,
   updatePaymentStatus,
   sendBroadcastEmail,
+  getPendingKyc,
+  updateKycStatus,
 };

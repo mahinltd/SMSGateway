@@ -11,6 +11,8 @@ const {
   getPayments,
   updatePaymentStatus,
   sendBroadcastEmail,
+  getPendingKyc,
+  updateKycStatus,
 } = require('../controllers/admin.controller');
 const { sendAdminEmailToUser } = require('../controllers/adminEmail.controller');
 
@@ -29,5 +31,8 @@ router.get('/payments', getPayments);
 router.put('/payments/:id/status', updatePaymentStatus);
 router.post('/broadcast', sendBroadcastEmail);
 router.post('/emails/send', sendAdminEmailToUser);
+
+router.get('/kyc/pending', getPendingKyc);
+router.put('/kyc/:userId/status', updateKycStatus);
 
 module.exports = router;
