@@ -131,7 +131,7 @@ async function submitPayment(req, res) {
     });
   } catch (error) {
     if (error && error.code === 'P2002') {
-      return res.status(409).json({ message: 'trxId already exists' });
+      return res.status(400).json({ error: 'This Transaction ID has already been used.' });
     }
 
     return res.status(500).json({ message: 'Failed to submit payment' });
