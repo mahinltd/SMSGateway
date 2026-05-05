@@ -15,6 +15,7 @@ dotenv.config();
 const frontendUrl = process.env.FRONTEND_URL || 'https://sms.mahinai.app';
 const allowedOrigins = [
   frontendUrl,
+  'https://sms.mahinai.app',
   'http://localhost:5173',
   'https://sms-gateway-seven.vercel.app',
 ];
