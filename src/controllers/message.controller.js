@@ -1,5 +1,6 @@
 // ©2026 SMS GATEWAY Mahin Ltd develop by (Tanvir)
 const prisma = require('../config/prisma');
+const { z } = require('zod');
 
 function normalizeMessageStatus(status) {
   if (status === 'sent') {
@@ -28,7 +29,20 @@ async function getMessages(req, res) {
 
 async function sendSms(req, res) {
   try {
-    const { device_id, phone_number, message_body } = req.body;
+    const smsSchema = z
+      .object({
+        device_id: z.string().min(1, 'device_id cannot be empty'),
+        phone_number: z.string().min(1, 'Phone number cannot be empty'),
+        message_body: z.string().min(1, 'Message cannot be empty'),
+      })
+      .passthrough();
+
+    const validation = smsSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: 'Invalid input data', details: validation.error.errors });
+    }
+
+    const { device_id, phone_number, message_body } = validation.data;
 
     if (!device_id || !phone_number || !message_body) {
       return res.status(400).json({
