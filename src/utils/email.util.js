@@ -13,7 +13,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 async function sendEmail(to, subject, html) {
   try {
     const data = await resend.emails.send({
-      from: process.env.EMAIL_FROM || process.env.SMTP_FROM || 'SMS Gateway <noreply@sms.mahinai.app>',
+      from: process.env.EMAIL_FROM || process.env.SMTP_FROM || 'SMS Gateway <noreply@mahinai.app>',
       to: [to],
       subject: subject,
       html: html,
@@ -93,7 +93,26 @@ async function sendLoginSecurityAlert(email, city, country, ip) {
   return sendEmail(email, subject, html);
 }
 
+async function sendPasswordResetEmail(email, resetToken) {
+  const resetLink = `https://sms.mahinai.app/reset-password?token=${resetToken}`;
+  const subject = 'Password Reset Request - SMS Gateway';
+  const html = `
+    <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center; background: #f9fafb;">
+      <div style="max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h2 style="color: #1f2937;">Password Reset Request</h2>
+        <p style="color: #4b5563; margin-bottom: 25px;">You requested to reset your SMS Gateway account password. Click the button below to set a new password:</p>
+        <a href="${resetLink}" style="background: #3B82F6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Reset Password</a>
+        <p style="color: #6b7280; font-size: 12px; margin-top: 25px;">If you didn't request this, please ignore this email. This link will expire in 1 hour.</p>
+      </div>
+    </div>
+  `;
+  return sendEmail(email, subject, html);
+}
+
 module.exports = {
   sendEmail,
   sendLoginSecurityAlert,
+  sendPasswordResetEmail,
 };
+
+
