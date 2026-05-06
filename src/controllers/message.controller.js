@@ -138,73 +138,56 @@ async function sendBulkSms(req, res) {
     const payload = req.body && typeof req.body === 'object' ? req.body : {};
     const receivers = Array.isArray(payload.receivers) ? payload.receivers.filter(Boolean) : [];
     const message = payload.message;
-    const simSlot = payload.simSlot;
+    const simSlot = payload.simSlot || '0';
     const deviceId = payload.deviceId;
 
     if (!receivers.length || !message || !deviceId) {
-      return res.status(400).json({
-        message: 'receivers, message, simSlot, and deviceId are required',
-      });
+      return res.status(400).json({ message: 'receivers, message, and deviceId are required' });
     }
 
     const device = await prisma.device.findFirst({
-      where: {
-        id: deviceId,
-        userId: currentUser.id,
-        status: 'online',
-      },
-      select: {
-        id: true,
-        socketId: true,
-      },
+      where: { id: deviceId, userId: currentUser.id, status: 'online' },
+      select: { id: true, socketId: true },
     });
 
     if (!device) {
       return res.status(404).json({ message: 'Online device not found for this user' });
     }
 
-    const savedMessages = [];
-    for (const number of receivers) {
-      const newMsg = await prisma.message.create({
-        data: {
-          phoneNumber: String(number),
-          messageBody: String(message),
-          type: 'sent',
-          status: 'pending',
-          deviceId: device.id,
-          userId: currentUser.id,
-        },
-        select: {
-          id: true,
-          deviceId: true,
-          phoneNumber: true,
-          messageBody: true,
-          status: true,
-          type: true,
-          createdAt: true,
-        },
-      });
-      savedMessages.push(newMsg);
-    }
-
+    // 1. Send Response IMMEDIATELY so the frontend is fast and non-blocking
     res.status(200).json({
       success: true,
-      message: 'Bulk SMS queued successfully. Messages will be sent in the background.',
+      message: 'Bulk SMS queued successfully. Messages will be processed 1-by-1 in the background.',
     });
 
+    // 2. Process Background Loop (Simulating Single SMS every 3 seconds)
     (async () => {
-      for (const msg of savedMessages) {
+      for (const number of receivers) {
         try {
+          // Step A: Create ONLY ONE message in the database (Pending)
+          const newMsg = await prisma.message.create({
+            data: {
+              phoneNumber: String(number),
+              messageBody: String(message),
+              type: 'sent',
+              status: 'pending',
+              deviceId: device.id,
+              userId: currentUser.id,
+            },
+          });
+
+          // Step B: Emit socket event to Android App for this single message
           const targetSocketId = device.socketId;
           if (targetSocketId) {
             req.app.get('io').to(targetSocketId).emit('send_sms', {
-              id: msg.id,
-              receiver: msg.phoneNumber,
-              message: msg.messageBody,
-              simSlot,
+              id: newMsg.id,
+              receiver: newMsg.phoneNumber,
+              message: newMsg.messageBody,
+              simSlot: simSlot,
             });
           }
 
+          // Step C: Wait strictly 3 seconds before injecting the next message
           await new Promise((resolve) => setTimeout(resolve, 3000));
         } catch (err) {
           console.error('BULK_SMS_BG_ERROR:', err);
@@ -212,7 +195,10 @@ async function sendBulkSms(req, res) {
       }
     })();
   } catch (error) {
-    return res.status(500).json({ message: 'Failed to send bulk SMS' });
+    console.error('BULK_ERROR:', error);
+    if (!res.headersSent) {
+      return res.status(500).json({ message: 'Failed to queue bulk SMS' });
+    }
   }
 }
 
