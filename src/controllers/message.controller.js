@@ -31,8 +31,8 @@ async function sendSms(req, res) {
   try {
     if (!req.user.isPaid && req.user.role !== 'admin') {
       return res.status(403).json({
-        error: 'Subscription Required',
-        message: 'You must purchase a plan to connect devices and use the Android App.',
+        error: 'সাবস্ক্রিপশন প্রয়োজন',
+        message: 'এসএমএস পাঠাতে অনুগ্রহ করে আমাদের ওয়েবসাইট থেকে একটি প্ল্যান কিনুন।',
       });
     }
 

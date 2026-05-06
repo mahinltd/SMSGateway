@@ -62,18 +62,18 @@ async function savePairingToken(document) {
 
 async function generateToken(req, res) {
   try {
+    if (!req.user.isPaid && req.user.role !== 'admin') {
+      return res.status(403).json({
+        error: 'সাবস্ক্রিপশন প্রয়োজন',
+        message: 'অ্যান্ড্রয়েড অ্যাপ ব্যবহার করতে এবং ডিভাইস কানেক্ট করতে অনুগ্রহ করে আমাদের ওয়েবসাইট থেকে একটি প্ল্যান কিনুন।',
+      });
+    }
+
     const payload = req.body && typeof req.body === 'object' ? req.body : {};
     const { device_name, deviceName, selected_sim, selectedSim } = payload;
     const resolvedDeviceName = (device_name || deviceName || '').trim();
     const resolvedSelectedSim = selected_sim ?? selectedSim;
     const userId = req.user && req.user.id ? req.user.id : req.user && req.user.user_id ? req.user.user_id : null;
-
-    if (!req.user.isPaid && req.user.role !== 'admin') {
-      return res.status(403).json({
-        error: 'Subscription Required',
-        message: 'You must purchase a plan to connect devices and use the Android App.',
-      });
-    }
 
     if (!userId || !isMongoObjectId(userId)) {
       return res.status(401).json({ message: 'Unauthorized: invalid user context' });
