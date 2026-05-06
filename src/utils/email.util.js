@@ -13,7 +13,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 async function sendEmail(to, subject, html) {
   try {
     const data = await resend.emails.send({
-      from: 'SMS Gateway <onboarding@resend.dev>',
+      from: process.env.EMAIL_FROM || process.env.SMTP_FROM || 'SMS Gateway <noreply@sms.mahinai.app>',
       to: [to],
       subject: subject,
       html: html,
