@@ -29,10 +29,16 @@ async function getMessages(req, res) {
 
 async function sendSms(req, res) {
   try {
-    if (!req.user.isPaid && req.user.role !== 'admin') {
+    // Real-time Subscription Check
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.user.id || req.user.user_id },
+      select: { isPaid: true, role: true },
+    });
+
+    if (!currentUser?.isPaid && currentUser?.role !== 'admin') {
       return res.status(403).json({
         error: 'সাবস্ক্রিপশন প্রয়োজন',
-        message: 'এসএমএস পাঠাতে অনুগ্রহ করে আমাদের ওয়েবসাইট থেকে একটি প্ল্যান কিনুন।',
+        message: 'এসএমএস পাঠাতে অনুগ্রহ করে আমাদের ওয়েবসাইট থেকে অ্যাপ্লিকেশন কিনুন।',
       });
     }
 
