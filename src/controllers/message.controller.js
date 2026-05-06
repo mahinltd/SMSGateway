@@ -120,6 +120,102 @@ async function sendSms(req, res) {
   }
 }
 
+async function sendBulkSms(req, res) {
+  try {
+    // Real-time Subscription Check
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.user.id || req.user.user_id },
+      select: { id: true, isPaid: true, role: true },
+    });
+
+    if (!currentUser?.isPaid && currentUser?.role !== 'admin') {
+      return res.status(403).json({
+        error: 'সাবস্ক্রিপশন প্রয়োজন',
+        message: 'এসএমএস পাঠাতে অনুগ্রহ করে আমাদের ওয়েবসাইট থেকে অ্যাপ্লিকেশন কিনুন।',
+      });
+    }
+
+    const payload = req.body && typeof req.body === 'object' ? req.body : {};
+    const receivers = Array.isArray(payload.receivers) ? payload.receivers.filter(Boolean) : [];
+    const message = payload.message;
+    const simSlot = payload.simSlot;
+    const deviceId = payload.deviceId;
+
+    if (!receivers.length || !message || !deviceId) {
+      return res.status(400).json({
+        message: 'receivers, message, simSlot, and deviceId are required',
+      });
+    }
+
+    const device = await prisma.device.findFirst({
+      where: {
+        id: deviceId,
+        userId: currentUser.id,
+        status: 'online',
+      },
+      select: {
+        id: true,
+        socketId: true,
+      },
+    });
+
+    if (!device) {
+      return res.status(404).json({ message: 'Online device not found for this user' });
+    }
+
+    const savedMessages = [];
+    for (const number of receivers) {
+      const newMsg = await prisma.message.create({
+        data: {
+          phoneNumber: String(number),
+          messageBody: String(message),
+          type: 'sent',
+          status: 'pending',
+          deviceId: device.id,
+          userId: currentUser.id,
+        },
+        select: {
+          id: true,
+          deviceId: true,
+          phoneNumber: true,
+          messageBody: true,
+          status: true,
+          type: true,
+          createdAt: true,
+        },
+      });
+      savedMessages.push(newMsg);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Bulk SMS queued successfully. Messages will be sent in the background.',
+    });
+
+    (async () => {
+      for (const msg of savedMessages) {
+        try {
+          const targetSocketId = device.socketId;
+          if (targetSocketId) {
+            req.app.get('io').to(targetSocketId).emit('send_sms', {
+              id: msg.id,
+              receiver: msg.phoneNumber,
+              message: msg.messageBody,
+              simSlot,
+            });
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+        } catch (err) {
+          console.error('BULK_SMS_BG_ERROR:', err);
+        }
+      }
+    })();
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to send bulk SMS' });
+  }
+}
+
 async function updateSmsStatus(req, res) {
   try {
     const { message_id, status } = req.body;
@@ -354,6 +450,7 @@ async function updateMessageStatusById(req, res) {
 module.exports = {
   getMessages,
   sendSms,
+  sendBulkSms,
   updateSmsStatus,
   receiveSms,
   deleteMessage,
