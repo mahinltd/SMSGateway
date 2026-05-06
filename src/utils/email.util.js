@@ -12,8 +12,18 @@ const resend = new Resend(process.env.RESEND_API_KEY);
  */
 async function sendEmail(to, subject, html) {
   try {
+    // Get the raw email string from env
+    const rawFrom = process.env.EMAIL_FROM || process.env.SMTP_FROM || 'noreply@mahinai.app';
+
+    // Extract just the email part (e.g., if it's "Mahin AI <noreply@mahinai.app>", extract "noreply@mahinai.app")
+    const emailMatch = rawFrom.match(/<(.+)>/);
+    const cleanEmail = emailMatch ? emailMatch[1] : rawFrom;
+
+    // Force the exact sender name
+    const finalFrom = `SMS Gateway <${cleanEmail}>`;
+
     const data = await resend.emails.send({
-      from: process.env.EMAIL_FROM || process.env.SMTP_FROM || 'SMS Gateway <noreply@mahinai.app>',
+      from: finalFrom,
       to: [to],
       subject: subject,
       html: html,
