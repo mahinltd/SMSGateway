@@ -60,6 +60,8 @@ model User {
   nidFront  String?   @map("nid_front")
   nidBack   String?   @map("nid_back")
   selfie    String?
+  resetToken       String?   @map("reset_token")
+  resetTokenExpiry DateTime? @map("reset_token_expiry")
   createdAt DateTime  @default(now()) @map("created_at")
   devices   Device[]
   messages  Message[]
