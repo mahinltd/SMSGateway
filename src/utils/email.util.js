@@ -1,19 +1,10 @@
 // ©2026 SMS GATEWAY Mahin Ltd develop by (Tanvir)
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-// Configure transporter with SMTP environment variables
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT || 587,
-  secure: process.env.SMTP_SECURE === 'true' || false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
- * Send a generic email using nodemailer SMTP
+ * Send a generic email using Resend API
  * @param {string} to - Recipient email address
  * @param {string} subject - Email subject
  * @param {string} html - HTML email body
@@ -21,17 +12,15 @@ const transporter = nodemailer.createTransport({
  */
 async function sendEmail(to, subject, html) {
   try {
-    const mailOptions = {
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
-      to,
-      subject,
-      html,
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-    return { success: true, messageId: info.messageId };
+    const data = await resend.emails.send({
+      from: 'SMS Gateway <onboarding@resend.dev>',
+      to: [to],
+      subject: subject,
+      html: html,
+    });
+    return { success: true, data };
   } catch (error) {
-    console.error('EMAIL_SEND_ERROR:', error);
+    console.error('RESEND_EMAIL_ERROR:', error);
     return { success: false, error: error.message };
   }
 }
