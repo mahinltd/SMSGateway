@@ -29,6 +29,13 @@ async function getMessages(req, res) {
 
 async function sendSms(req, res) {
   try {
+    if (!req.user.isPaid && req.user.role !== 'admin') {
+      return res.status(403).json({
+        error: 'Subscription Required',
+        message: 'You must purchase a plan to connect devices and use the Android App.',
+      });
+    }
+
     const smsSchema = z
       .object({
         device_id: z.string().min(1, 'device_id cannot be empty'),

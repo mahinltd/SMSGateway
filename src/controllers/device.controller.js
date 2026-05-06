@@ -68,6 +68,13 @@ async function generateToken(req, res) {
     const resolvedSelectedSim = selected_sim ?? selectedSim;
     const userId = req.user && req.user.id ? req.user.id : req.user && req.user.user_id ? req.user.user_id : null;
 
+    if (!req.user.isPaid && req.user.role !== 'admin') {
+      return res.status(403).json({
+        error: 'Subscription Required',
+        message: 'You must purchase a plan to connect devices and use the Android App.',
+      });
+    }
+
     if (!userId || !isMongoObjectId(userId)) {
       return res.status(401).json({ message: 'Unauthorized: invalid user context' });
     }
