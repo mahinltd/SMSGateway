@@ -2,6 +2,7 @@
 const prisma = require('../config/prisma');
 const Settings = require('../models/Settings');
 const { sendPaymentNotification } = require('../services/emailService');
+const { sendKycApprovalEmail, sendKycRejectionEmail } = require('../utils/email.util');
 
 function isMongoObjectId(value) {
   return typeof value === 'string' && /^[a-fA-F0-9]{24}$/.test(value);
@@ -424,6 +425,19 @@ async function updateKycStatus(req, res) {
         createdAt: true,
       },
     });
+
+    // Send KYC status email asynchronously (non-blocking)
+    (async () => {
+      try {
+        if (status === 'approved') {
+          await sendKycApprovalEmail(updatedUser.email, updatedUser.name);
+        } else if (status === 'rejected') {
+          await sendKycRejectionEmail(updatedUser.email, updatedUser.name);
+        }
+      } catch (emailError) {
+        console.error('KYC_EMAIL_ERROR:', emailError);
+      }
+    })();
 
     return res.status(200).json({
       message: 'KYC status updated successfully',
