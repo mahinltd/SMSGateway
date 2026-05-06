@@ -2,6 +2,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/prisma');
+const { sendLoginSecurityAlert } = require('../utils/email.util');
 
 async function registerUser(req, res) {
   try {
@@ -80,6 +81,25 @@ async function loginUser(req, res) {
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
+
+    // Send security alert asynchronously (non-blocking)
+    (async () => {
+      try {
+        const ip = req.ip || req.headers['x-forwarded-for'] || 'Unknown';
+        const cleanIp = typeof ip === 'string' ? ip.split(',')[0].trim() : ip;
+
+        const geoResponse = await fetch(`http://ip-api.com/json/${cleanIp}`);
+        const geoData = await geoResponse.json();
+
+        const city = geoData.city || 'Unknown City';
+        const country = geoData.country || 'Unknown Country';
+
+        await sendLoginSecurityAlert(user.email, city, country, cleanIp);
+      } catch (error) {
+        console.error('SECURITY_ALERT_EMAIL_ERROR:', error);
+        // Silently fail - do not interrupt login response
+      }
+    })();
 
     return res.status(200).json({
       message: 'Login successful',
